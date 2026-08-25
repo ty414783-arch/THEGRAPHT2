@@ -1,0 +1,1213 @@
+import { buildComposerMarkup, buildEmojiPickerMarkup } from "./components/composer.js";
+import { buildStyles } from "./components/styles.js";
+import { iconMap, lucideSvgs } from "./icons.js";
+import { googleSpinnerMarkup } from "./components/google-spinner.js";
+
+const buildThinWorkspaceHtml = ({
+  clientScriptUrl,
+  clientPreloadUrls = [],
+  clientCssUrls = [],
+  clientBuildId = "",
+  inter400Url,
+  inter500Url,
+  inter600Url,
+  inter700Url,
+  inter800Url,
+  manifestUrl,
+  logoDataUrl,
+  uiFlags
+}) => {
+  const pageClassNames = [
+    "page",
+    "booting",
+    uiFlags?.newAuthUi ? "ui-new-auth" : "",
+    uiFlags?.newChatUi ? "ui-new-chat" : "",
+    uiFlags?.newSidebar ? "ui-new-sidebar" : ""
+  ].filter(Boolean).join(" ");
+
+  const buildMeta = clientBuildId || String(clientScriptUrl || "").replace(/^\/assets\/main-|^\/app\.|\.js$/g, "");
+  const preloadTags = (clientPreloadUrls.length ? clientPreloadUrls : [clientScriptUrl])
+    .filter(Boolean)
+    .map((url) => `<link rel="modulepreload" href="${url}" />`)
+    .join("\n    ");
+  const cssTags = clientCssUrls
+    .map((url) => `<link rel="stylesheet" href="${url}" />`)
+    .join("\n    ");
+
+  return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="tg-build" content="${buildMeta}" />
+    <style>
+      html,body,#page-root{height:100%;margin:0;background:#fff}
+      #page-root{display:flex;flex-direction:column;min-height:0}
+      #boot-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;align-items:center;justify-content:center}
+      #app-root{display:flex;flex:1;min-height:0;width:100%}
+      #workspace-view{display:flex;flex-direction:column;min-height:0;flex:1}
+      #workspace-view .workspace-main{display:flex;flex:1;min-height:0}
+      .boot-splash.hidden{display:none!important}
+    </style>
+    ${preloadTags}
+    ${cssTags}
+    <link rel="manifest" href="${manifestUrl}" />
+    <link rel="icon" href="${logoDataUrl}" />
+    <link rel="apple-touch-icon" href="${logoDataUrl}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wdth,wght@0,75..100,300..800;1,75..100,300..800&display=swap" rel="stylesheet">
+    <title>TheGraphT Web</title>
+    <script src="/config.js" defer></script>
+    ${buildStyles({
+      inter400Url,
+      inter500Url,
+      inter600Url,
+      inter700Url,
+      inter800Url,
+      wallpaperDataUrl: logoDataUrl
+    })}
+  </head>
+  <body>
+    <div id="boot-splash" class="boot-splash">${googleSpinnerMarkup(48)}</div>
+    <main id="page-root" class="${pageClassNames}">
+      <div id="app-root"></div>
+      <section id="auth-view" class="view hidden"></section>
+      <section id="workspace-view" class="view hidden">
+        <div class="workspace-shell">
+          <div class="workspace-main"></div>
+        </div>
+      </section>
+    </main>
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+    <script src="/assets/icon-helper.js"></script>
+    <script type="module" src="${clientScriptUrl}"></script>
+  </body>
+</html>`;
+};
+
+export const getIconHtml = (name, extraClasses = "", attrs = "") => {
+  const lucideName = iconMap[name] || name;
+  const svgContent = lucideSvgs[lucideName];
+  if (!svgContent) {
+    console.warn("Icon not found: " + name);
+    return "";
+  }
+  const attrStr = attrs ? " " + attrs : "";
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-svg icon-${lucideName} ${extraClasses}"${attrStr}>${svgContent}</svg>`;
+};
+
+export const buildHtml = ({
+  clientScriptUrl,
+  clientPreloadUrls = [],
+  clientCssUrls = [],
+  clientBuildId = "",
+  inter400Url,
+  inter500Url,
+  inter600Url,
+  inter700Url,
+  inter800Url,
+  manifestUrl,
+  logoDataUrl,
+  wallpaperDataUrl,
+  emojiIconDataUrl,
+  settingsKeyboardIconDataUrl,
+  uiFlags,
+  configScript = ""
+}) => {
+  const usesThinShell = Boolean(uiFlags?.newAuthUi || uiFlags?.newChatUi || uiFlags?.newSidebar);
+  if (usesThinShell) {
+    return buildThinWorkspaceHtml({
+      clientScriptUrl,
+      clientPreloadUrls,
+      clientCssUrls,
+      clientBuildId,
+      inter400Url,
+      inter500Url,
+      inter600Url,
+      inter700Url,
+      inter800Url,
+      manifestUrl,
+      logoDataUrl,
+      uiFlags
+    });
+  }
+
+  const pageClassNames = [
+    "page",
+    "booting",
+    uiFlags.telegramTopBar ? "ui-telegram-topbar" : "ui-legacy-chat-island",
+    uiFlags.desktopInterFont ? "ui-inter-font" : "ui-system-font",
+    uiFlags.desktopSideGuttersOnly ? "ui-side-gutters-only" : "ui-full-bleed-shell"
+  ].join(" ");
+
+  const workspaceAccountClassName = uiFlags.sidebarAccountCardHidden
+    ? "workspace-account is-hidden"
+    : "workspace-account";
+
+  const buildMeta = clientBuildId || String(clientScriptUrl || "").replace(/^\/assets\/main-|^\/app\.|\.js$/g, "");
+  const preloadTags = (clientPreloadUrls.length ? clientPreloadUrls : [clientScriptUrl])
+    .filter(Boolean)
+    .map((url) => `<link rel="modulepreload" href="${url}" />`)
+    .join("\n    ");
+  const cssTags = clientCssUrls
+    .map((url) => `<link rel="stylesheet" href="${url}" />`)
+    .join("\n    ");
+
+  return `<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="tg-build" content="${buildMeta}" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <style>
+      html,body{background:#fff;margin:0}
+      #boot-splash{position:fixed;inset:0;z-index:2147483000;background:#fff;display:flex;align-items:center;justify-content:center}
+      #boot-splash:not(.hidden)~.auth-bg-canvas,
+      body:has(.page.booting) .auth-bg-canvas{display:none!important}
+    </style>
+    ${preloadTags}
+    ${cssTags}
+    <link rel="preload" href="${emojiIconDataUrl}" as="image" />
+    <link rel="preload" href="${settingsKeyboardIconDataUrl}" as="image" />
+    <link rel="manifest" href="${manifestUrl}" />
+    <link rel="icon" href="${logoDataUrl}" />
+    <link rel="apple-touch-icon" href="${logoDataUrl}" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wdth,wght@0,75..100,300..800;1,75..100,300..800&display=swap" rel="stylesheet">
+    <title>TheGraphT Web</title>
+    <script src="/config.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+    ${buildStyles({
+      inter400Url,
+      inter500Url,
+      inter600Url,
+      inter700Url,
+      inter800Url,
+      wallpaperDataUrl
+    })}
+  </head>
+  <body>
+    <div id="boot-splash" class="boot-splash">${googleSpinnerMarkup(48)}</div>
+    <div id="auth-bg-canvas" class="auth-bg-canvas" aria-hidden="true">
+      <div id="auth-bg-layer-a" class="auth-bg-layer is-active"></div>
+      <div id="auth-bg-layer-b" class="auth-bg-layer"></div>
+      <div id="auth-bg-wallpaper" class="auth-bg-wallpaper"></div>
+    </div>
+    <main id="page-root" class="${pageClassNames}">
+      <section id="auth-view" class="view hidden">
+        <div class="auth-single-tile">
+          <div class="brand-panel">
+            <div class="brand-stack">
+              <div class="logo-mark">
+                <img class="logo-image" src="${logoDataUrl}" alt="TheGraphT logo" />
+              </div>
+              <h1 class="brand-title-glass">thegrapht</h1>
+            </div>
+          </div>
+          <div class="auth-panel">
+            <div class="auth-card">
+              <div id="auth-login-inner" class="auth-inner">
+                <div id="auth-copy-block" class="auth-copy-block">
+                  <p id="auth-kicker" class="auth-kicker">Sign in</p>
+                  <h2 id="auth-title" class="auth-title">Log In</h2>
+                  <p id="auth-copy" class="auth-copy">Enter your email and password to continue to Thegrapht.</p>
+                </div>
+
+                <form id="auth-form" novalidate>
+                  <div id="name-field" class="toggle-field">
+                    <div class="field">
+                      <label for="name">Name</label>
+                      <input id="name" name="name" type="text" autocomplete="name" placeholder="galyachupachups" />
+                    </div>
+                  </div>
+
+                  <div class="field">
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+                  </div>
+
+                  <div class="field">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••••••" required />
+                  </div>
+
+                  <button id="submit-button" class="submit" type="submit">Log In</button>
+                  <div id="status" class="status"></div>
+                </form>
+              </div>
+
+              <div id="auth-verification-inner" class="auth-inner hidden">
+                <div class="auth-copy-block">
+                  <p class="auth-kicker">Security Code</p>
+                  <h2 class="auth-title">Verify Email</h2>
+                  <p class="auth-copy">To get your 6-digit verification code, please open our <a href="https://t.me/thegrapht_verification_bot" target="_blank" style="color: #0d0f12; text-decoration: underline; font-weight: 600;">Telegram Bot</a> and send your email <strong id="verification-email-target">your email</strong> to it.</p>
+                </div>
+
+                <form id="verification-form" novalidate>
+                  <div class="field">
+                    <label for="verification-code">Verification Code</label>
+                    <div class="verification-code-input-container">
+                      <input id="verification-code" name="verification-code" type="text" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000" autocomplete="one-time-code" required />
+                    </div>
+                  </div>
+
+                  <button id="verify-button" class="submit" type="submit" data-i18n="auth.verify">Verify</button>
+                  <div id="verification-status" class="status"></div>
+                </form>
+
+                <div class="resend-container">
+                  <button id="resend-code-button" class="resend-btn" type="button" data-i18n="auth.resendCode">Resend code</button>
+                  <p id="resend-timer-text" class="resend-timer-text hidden"><span data-i18n="auth.resendTimer">Resend code in</span> <span id="resend-countdown">60</span>s</p>
+                  <p id="resend-attempts-text" class="resend-attempts-text"><span data-i18n="auth.attemptsRemaining">Attempts remaining:</span> <span id="resend-attempts">3</span></p>
+                  <button id="verification-back-btn" class="resend-btn" style="color: #64748b; margin-top: 12px;" type="button" data-i18n="auth.backToLogin">Back to login</button>
+                </div>
+              </div>
+
+              <div class="meta-row">
+                <span id="meta-text" data-i18n="auth.noAccount">No account?</span>
+                <button id="toggle-mode" type="button" data-i18n="auth.createAccount">Create account</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="workspace-view" class="view hidden">
+        <div class="workspace-shell">
+          <aside class="workspace-sidebar">
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle" aria-hidden="true"></div>
+            <div class="workspace-brand">
+              <div class="workspace-brand-leading">
+                <button id="sidebar-menu-button" class="workspace-brand-menu" type="button" aria-label="Sidebar menu">
+                  ${getIconHtml("menu", "", "aria-hidden=\"true\"")}
+                </button>
+                <h1 id="sidebar-brand-title" class="brand-text-title">TheGraphT</h1>
+                <img src="${logoDataUrl}" alt="Asymprote Logo" class="brand-mini-logo" decoding="async" />
+              </div>
+              <div class="sidebar-search">
+                <input id="sidebar-search" type="text" placeholder="Search" data-i18n-placeholder="search.placeholder" autocomplete="off" spellcheck="false" />
+              </div>
+              <button id="sidebar-compose-fab" class="workspace-brand-menu sidebar-compose-corner" type="button" aria-label="Open compose menu">
+                ${getIconHtml("edit", "", "aria-hidden=\"true\"")}
+              </button>
+            </div>
+            <div id="sidebar-glass-menu" class="sidebar-glass-menu" aria-hidden="true">
+              <div class="sidebar-glass-menu-items">
+                <button id="sidebar-menu-profile" class="sidebar-glass-menu-item" type="button">
+                  ${getIconHtml("person", "", "aria-hidden=\"true\"")}
+                  <span data-i18n="menu.profile">Profile</span>
+                </button>
+                <button id="sidebar-menu-saved" class="sidebar-glass-menu-item" type="button">
+                  ${getIconHtml("bookmark", "", "aria-hidden=\"true\"")}
+                  <span data-i18n="menu.savedMessages">Saved Messages</span>
+                </button>
+                <hr class="sidebar-glass-menu-sep" />
+                <button id="sidebar-menu-logout" class="sidebar-glass-menu-item" type="button">
+                  ${getIconHtml("logout", "", "aria-hidden=\"true\"")}
+                  <span data-i18n="menu.logout">Log out</span>
+                </button>
+              </div>
+            </div>
+            <div class="${workspaceAccountClassName}">
+              <div class="workspace-account-copy">
+                <span class="workspace-account-label" data-i18n="menu.account">Account</span>
+                <strong id="workspace-user-name" class="workspace-account-name">Guest</strong>
+              </div>
+              <button id="logout-button" class="workspace-account-logout" type="button" data-i18n="menu.logout">Log out</button>
+            </div>
+
+            <div id="dialog-list" class="dialog-list"></div>
+
+
+
+            <div id="sidebar-compose-menu" class="sidebar-compose-menu" aria-hidden="true">
+              <button id="sidebar-compose-channel" class="sidebar-compose-menu-item" type="button">
+                ${getIconHtml("campaign", "", "aria-hidden=\"true\"")}
+                <span data-i18n="menu.newChannel">New Channel</span>
+              </button>
+              <button id="sidebar-compose-group" class="sidebar-compose-menu-item" type="button">
+                ${getIconHtml("groups", "", "aria-hidden=\"true\"")}
+                <span data-i18n="menu.newGroup">New Group</span>
+              </button>
+              <button id="sidebar-compose-private" class="sidebar-compose-menu-item" type="button">
+                ${getIconHtml("lock", "", "aria-hidden=\"true\"")}
+                <span data-i18n="menu.newSecretChat">New Secret Chat</span>
+              </button>
+            </div>
+            <aside id="group-create-panel" class="group-create-panel" aria-hidden="true">
+              <div id="group-create-step-members" class="group-create-step group-create-step-members">
+                <header class="group-create-header">
+                  <button id="group-create-close" class="group-create-back" type="button" aria-label="Close Add Members">
+                    ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <div class="group-create-title-wrap">
+                    <strong id="group-create-step-members-title" class="group-create-title" data-i18n="group.addMembers">Add Members</strong>
+                  </div>
+                </header>
+                <div id="group-create-selected" class="group-create-selected" aria-label="Selected members"></div>
+                <div class="group-create-search">
+                  <input id="group-create-search-input" type="text" placeholder="Add people..." data-i18n-placeholder="group.addPeople" />
+                </div>
+                <div id="group-create-list" class="group-create-list"></div>
+              </div>
+              <div id="group-create-step-details" class="group-create-step group-create-step-details" aria-hidden="true">
+                <header class="group-create-header">
+                  <button id="group-create-details-back" class="group-create-back" type="button" aria-label="Back to Add Members">
+                    ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <div class="group-create-title-wrap">
+                    <strong class="group-create-title" data-i18n="menu.newGroup">New Group</strong>
+                  </div>
+                </header>
+                <div class="group-details-body">
+                  <div class="group-details-photo-row">
+                    <button id="group-create-photo-button" class="group-create-photo-button" type="button" aria-label="Add group photo">
+                      <svg class="group-create-photo-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m8 3a5 5 0 0 0-5 5a5 5 0 0 0 5 5a5 5 0 0 0 5-5a5 5 0 0 0-5-5m0 2a3 3 0 0 1 3 3a3 3 0 0 1-3 3a3 3 0 0 1-3-3a3 3 0 0 1 3-3"/></svg>
+                      <img id="group-create-photo-preview" class="group-create-photo-preview" alt="Group photo preview" />
+                    </button>
+                    <input id="group-create-photo-input" type="file" accept="image/*" hidden />
+                  </div>
+                  <label class="group-create-name-label" for="group-create-name-input" data-i18n="group.groupNameLabel">Group Name</label>
+                  <input id="group-create-name-input" class="group-create-name-input" type="text" maxlength="255" />
+                </div>
+                <div class="group-details-members">
+                  <p id="group-create-member-count" class="group-create-member-count">0 members</p>
+                  <div id="group-create-details-list" class="group-create-details-list"></div>
+                </div>
+              </div>
+              <button id="group-create-next" class="group-create-next" type="button" aria-label="Next step">
+                ${getIconHtml("arrow_forward", "", "aria-hidden=\"true\"")}
+              </button>
+            </aside>
+
+            <aside id="channel-create-panel" class="group-create-panel channel-create-panel" aria-hidden="true">
+              <div id="channel-create-step-details" class="group-create-step group-create-step-details channel-create-step-details">
+                <header class="group-create-header">
+                  <button id="channel-create-close" class="group-create-back" type="button" aria-label="Close New Channel">
+                    ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <div class="group-create-title-wrap">
+                    <strong class="group-create-title" data-i18n="menu.newChannel">New Channel</strong>
+                  </div>
+                </header>
+                <div class="group-details-body channel-create-body">
+                  <div class="group-details-photo-row">
+                    <button id="channel-create-photo-button" class="group-create-photo-button" type="button" aria-label="Add channel photo">
+                      <svg class="group-create-photo-icon" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" aria-hidden="true"><path d="M0 0h24v24H0z" fill="none"/><path fill="currentColor" d="M4 4h3l2-2h6l2 2h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m8 3a5 5 0 0 0-5 5a5 5 0 0 0 5 5a5 5 0 0 0 5-5a5 5 0 0 0-5-5m0 2a3 3 0 0 1 3 3a3 3 0 0 1-3 3a3 3 0 0 1-3-3a3 3 0 0 1 3-3"/></svg>
+                      <img id="channel-create-photo-preview" class="group-create-photo-preview" alt="Channel photo preview" />
+                    </button>
+                    <input id="channel-create-photo-input" type="file" accept="image/*" hidden />
+                  </div>
+                  <label class="group-create-name-label" for="channel-create-name-input" data-i18n="channel.nameLabel">Channel Name</label>
+                  <input id="channel-create-name-input" class="group-create-name-input" type="text" maxlength="255" />
+                  <label class="group-create-name-label channel-create-description-label" for="channel-create-description-input" data-i18n="channel.descriptionLabel">Description (optional)</label>
+                  <textarea id="channel-create-description-input" class="channel-create-description-input" maxlength="1000" rows="3"></textarea>
+                </div>
+              </div>
+              <div id="channel-create-step-type" class="group-create-step group-create-step-details channel-create-step-type" aria-hidden="true">
+                <header class="group-create-header">
+                  <button id="channel-create-type-back" class="group-create-back" type="button" aria-label="Back to channel details">
+                    ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <div class="group-create-title-wrap">
+                    <strong class="group-create-title" data-i18n="channel.typeTitle">Channel Type</strong>
+                  </div>
+                </header>
+                <div class="channel-create-type-body">
+                  <fieldset class="channel-create-type-options">
+                    <label class="channel-create-type-option">
+                      <input type="radio" name="channel-visibility" value="private" checked />
+                      <span class="channel-create-type-copy">
+                        <strong data-i18n="channel.privateTitle">Private Channel</strong>
+                        <small data-i18n="channel.privateDesc">Only people with an invite link can join.</small>
+                      </span>
+                    </label>
+                    <label class="channel-create-type-option">
+                      <input type="radio" name="channel-visibility" value="public" />
+                      <span class="channel-create-type-copy">
+                        <strong data-i18n="channel.publicTitle">Public Channel</strong>
+                        <small data-i18n="channel.publicDesc">Anyone can find and join from search.</small>
+                      </span>
+                    </label>
+                  </fieldset>
+                  <div id="channel-create-public-link-wrap" class="channel-create-public-link-wrap" hidden>
+                    <label class="group-create-name-label" for="channel-create-slug-input" data-i18n="channel.linkLabel">Link</label>
+                    <div id="channel-create-slug-field" class="channel-create-slug-field">
+                      <span id="channel-create-slug-prefix" class="channel-create-slug-prefix"></span>
+                      <input id="channel-create-slug-input" class="channel-create-slug-input" type="text" maxlength="32" autocapitalize="off" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <p id="channel-create-slug-error" class="channel-create-slug-error" hidden data-i18n="channel.linkInvalid">Link is invalid</p>
+                  </div>
+                  <div id="channel-create-private-link-wrap" class="channel-create-private-link-wrap">
+                    <label class="group-create-name-label" data-i18n="channel.inviteLinkLabel">Invite Link</label>
+                    <p id="channel-create-private-link-preview" class="channel-create-private-link-preview"></p>
+                    <p class="channel-create-private-note" data-i18n="channel.privateLinkNote">The invite link will be created when you finish.</p>
+                  </div>
+                </div>
+              </div>
+              <button id="channel-create-next" class="group-create-next channel-create-next" type="button" aria-label="Next step">
+                ${getIconHtml("arrow_forward", "", "aria-hidden=\"true\"")}
+              </button>
+              <button id="channel-create-submit" class="group-create-next channel-create-submit" type="button" aria-label="Create channel">
+                ${getIconHtml("check", "", "aria-hidden=\"true\"")}
+              </button>
+            </aside>
+
+          </aside>
+
+          <section class="workspace-main empty-chat">
+            <div id="chat-audio-top-player" class="chat-audio-top-player header-player" aria-hidden="true">
+              <div class="chat-audio-top-inner header-player-content">
+                <button id="chat-audio-top-prev" class="chat-audio-top-btn header-player-button" type="button" aria-label="Rewind 10 seconds">
+                  ${getIconHtml("fast_rewind", "", "aria-hidden=\"true\"")}
+                </button>
+                <button id="chat-audio-top-toggle" class="chat-audio-top-btn header-player-button" type="button" aria-label="Pause">
+                  ${getIconHtml("pause", "", "id=\"chat-audio-top-toggle-icon\" aria-hidden=\"true\"")}
+                </button>
+                <button id="chat-audio-top-next" class="chat-audio-top-btn header-player-button" type="button" aria-label="Forward 10 seconds">
+                  ${getIconHtml("fast_forward", "", "aria-hidden=\"true\"")}
+                </button>
+                <div class="chat-audio-top-copy header-player-title">
+                  <div id="chat-audio-top-title" class="chat-audio-top-title">Audio</div>
+                  <div id="chat-audio-top-meta" class="chat-audio-top-meta header-player-time">0:00 · Unknown artist</div>
+                </div>
+                <div class="chat-audio-top-volume-wrap">
+                  <button id="chat-audio-top-volume" class="chat-audio-top-btn" type="button" aria-label="Mute or unmute">
+                    ${getIconHtml("volume_up", "", "id=\"chat-audio-top-volume-icon\" aria-hidden=\"true\"")}
+                  </button>
+                  <div id="chat-audio-top-volume-popover" class="chat-audio-top-volume-popover" aria-hidden="true">
+                    <input id="chat-audio-top-volume-range" class="chat-audio-top-volume-range" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume" />
+                  </div>
+                </div>
+                <div class="chat-audio-top-speed-wrap">
+                  <button id="chat-audio-top-speed" class="chat-audio-top-speed" type="button" aria-label="Playback speed">1X</button>
+                  <div id="chat-audio-top-speed-popover" class="chat-audio-top-speed-popover" aria-hidden="true">
+                    <button class="chat-audio-speed-item" type="button" data-speed="0.5">0.5x</button>
+                    <button class="chat-audio-speed-item active" type="button" data-speed="1">1x</button>
+                    <button class="chat-audio-speed-item" type="button" data-speed="1.5">1.5x</button>
+                    <button class="chat-audio-speed-item" type="button" data-speed="2">2x</button>
+                  </div>
+                </div>
+                <button id="chat-audio-top-repeat" class="chat-audio-top-repeat" type="button" aria-label="Repeat">
+                  ${getIconHtml("repeat", "", "aria-hidden=\"true\"")}
+                </button>
+                <button id="chat-audio-top-close" class="chat-audio-top-btn" type="button" aria-label="Stop and close player">
+                  ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                </button>
+              </div>
+              <div id="chat-audio-top-progress" class="chat-audio-top-progress" aria-hidden="true">
+                <span id="chat-audio-top-progress-fill" class="chat-audio-top-progress-fill"></span>
+              </div>
+            </div>
+            <div id="multi-tab-blocker" class="multi-tab-blocker" aria-hidden="true">
+              <div class="multi-tab-blocker-card">
+                <p class="multi-tab-blocker-title">Another tab is active</p>
+                <p class="multi-tab-blocker-copy">Close other TheGraphT tabs. This tab will become active automatically.</p>
+              </div>
+            </div>
+            <div id="chat-window" class="chat-window">
+              <div id="chat-island" class="chat-island">
+                <button id="chat-back-button" class="chat-island-action chat-island-back" type="button" aria-label="Back to chats">
+                  ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+                </button>
+                <div class="chat-island-copy" role="button" tabindex="0" aria-label="Open profile info">
+                  <div id="chat-header-avatar" class="chat-header-avatar" aria-hidden="true"></div>
+                  <div class="chat-island-text">
+                    <strong id="chat-title">Saved Messages</strong>
+                    <span id="chat-subtitle">Only for you</span>
+                  </div>
+                </div>
+                <div class="chat-island-actions">
+                  <button id="chat-group-video-button" class="chat-island-action" type="button" aria-label="Group video chat" hidden>
+                    ${getIconHtml("videocam", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <button id="chat-search-toggle" class="chat-island-action" type="button" aria-label="Search messages">
+                    ${getIconHtml("search", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <button id="chat-call-button" class="chat-island-action" type="button" aria-label="Call">
+                    ${getIconHtml("call", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <button id="chat-info-button" class="chat-island-action" type="button" aria-label="Chat info">
+                    ${getIconHtml("panel_right", "", "aria-hidden=\"true\"")}
+                  </button>
+                  <button id="chat-more-button" class="chat-island-action" type="button" aria-label="More">
+                    ${getIconHtml("more_vert", "", "aria-hidden=\"true\"")}
+                  </button>
+                </div>
+              </div>
+              <div id="group-call-join-strip" class="group-call-join-strip" aria-hidden="true" hidden>
+                <div class="group-call-join-copy">
+                  <span id="group-call-join-title" class="group-call-join-title">Live stream</span>
+                  <span id="group-call-join-meta" class="group-call-join-meta">0 members</span>
+                </div>
+                <button id="group-call-join-button" class="group-call-join-button" type="button">JOIN</button>
+              </div>
+              <div id="chat-search-backdrop" class="chat-search-backdrop" aria-hidden="true"></div>
+              <div id="chat-search-panel" class="chat-search-panel" aria-hidden="true">
+                <div class="chat-search-bar">
+                  <div id="chat-search-avatar" class="chat-search-avatar">T</div>
+                  <div class="chat-search-field">
+                    ${getIconHtml("search", "", "aria-hidden=\"true\"")}
+                    <input id="chat-search-input" class="chat-search-input" type="text" placeholder="Search" />
+                  </div>
+                  <button id="chat-search-close" class="chat-search-close" type="button" aria-label="Close search">
+                    ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                  </button>
+                </div>
+                <div id="chat-search-results" class="chat-search-results"></div>
+              </div>
+              <div id="chat-call-chip" class="chat-call-chip" aria-hidden="true">
+                <span class="chat-call-chip-dot" aria-hidden="true"></span>
+                <div class="chat-call-chip-copy">
+                  <span id="chat-call-chip-title" class="chat-call-chip-title">Call</span>
+                  <span id="chat-call-chip-time" class="chat-call-chip-time">00:00</span>
+                </div>
+              </div>
+              <button id="group-call-banner" class="group-call-banner" type="button" aria-hidden="true" hidden>
+                <span id="group-call-banner-state" class="group-call-banner-state">Connecting...</span>
+                <span id="group-call-banner-title" class="group-call-banner-title">Group video chat</span>
+                ${getIconHtml("call_end", "", "aria-hidden=\"true\"")}
+              </button>
+              <aside id="chat-profile-panel" class="chat-profile-panel" aria-hidden="true">
+                <div class="chat-profile-panel-card">
+                  <div class="chat-profile-panel-header">
+                    <span class="chat-profile-panel-title" data-i18n="info.title">Info</span>
+                    <button id="chat-profile-close" class="chat-profile-panel-close" type="button" aria-label="Close profile">
+                      ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                    </button>
+                  </div>
+                  <div class="chat-profile-panel-body">
+                    <div class="chat-profile-summary">
+                      <div id="chat-profile-avatar" class="chat-profile-avatar" role="button" tabindex="0">T</div>
+                      <div id="chat-profile-name" class="chat-profile-name">TheGrapht</div>
+                      <div id="chat-profile-status" class="chat-profile-status">online</div>
+                    </div>
+                    <div class="chat-profile-meta-grid">
+                      <div class="chat-profile-card" id="chat-profile-description-card" style="display: none;">
+                        <span class="chat-profile-card-label" data-i18n="info.description">Description</span>
+                        <div id="chat-profile-description" class="chat-profile-card-value"></div>
+                      </div>
+                      <div class="chat-profile-card" id="chat-profile-link-card">
+                        <span id="chat-profile-link-label" class="chat-profile-card-label" data-i18n="info.profileLink">Profile link</span>
+                        <div class="chat-profile-card-value chat-profile-link-row">
+                          <a id="chat-profile-link" class="chat-profile-link" href="https://thegrapht.su" target="_blank" rel="noopener noreferrer">thegrapht.su</a>
+                          <button id="chat-profile-qr-btn" class="chat-profile-qr-btn" type="button" aria-label="Show QR code" style="display: none;">
+                            ${getIconHtml("qr_code", "", "aria-hidden=\"true\"")}
+                          </button>
+                        </div>
+                      </div>
+                      <div class="chat-profile-card" id="chat-profile-notifications-card" style="display: none;">
+                        <span class="chat-profile-card-label" data-i18n="info.notifications">Notifications</span>
+                        <div class="chat-profile-card-value"><button id="chat-profile-notifications-btn" class="chat-profile-notifications-toggle is-on" type="button" role="switch" aria-checked="true" aria-label="Toggle notifications"><span class="chat-profile-notifications-toggle-thumb"></span></button></div>
+                      </div>
+                    </div>
+                    <div id="chat-profile-members-section" style="display: none;">
+                      <span class="chat-profile-card-label chat-profile-members-label" data-i18n="info.members">Members</span>
+                      <div id="chat-profile-members-list"></div>
+                    </div>
+                    <button id="chat-profile-leave-channel-btn" class="chat-profile-leave-btn" type="button" hidden data-i18n="channel.leave">Leave channel</button>
+                  </div>
+                </div>
+              </aside>
+
+              <div id="chat-stage" class="chat-stage empty">
+                <div id="chat-loading-overlay" class="chat-loading-overlay" aria-hidden="true">
+                  <div class="gspinner-wrap" aria-hidden="true">${googleSpinnerMarkup(40)}</div>
+                </div>
+                <div id="message-list" class="message-list"></div>
+                <button id="chat-scroll-bottom" class="chat-scroll-bottom" type="button" aria-label="Scroll down">
+                  ${getIconHtml("south", "", "aria-hidden=\"true\"")}
+                </button>
+${buildComposerMarkup({
+  emojiIconDataUrl,
+  settingsKeyboardIconDataUrl,
+  getIconHtml
+})}
+              </div>
+${buildEmojiPickerMarkup({ getIconHtml })}
+              <div id="call-overlay" class="call-overlay" aria-hidden="true">
+                <div id="call-modal" class="call-modal tg-call-modal">
+                  <span id="call-modal-kicker" class="call-modal-kicker" aria-hidden="true"></span>
+                  <span id="call-group-kicker" class="call-group-kicker" aria-hidden="true" hidden>Group video chat</span>
+                  <div class="tg-call-window-actions">
+                    <button id="call-expand-button" class="call-icon-button tg-call-window-button" type="button" aria-label="Toggle fullscreen">
+                      ${getIconHtml("open_in_full", "", "aria-hidden=\"true\"")}
+                    </button>
+                    <button id="call-close-button" class="call-icon-button tg-call-window-button" type="button" aria-label="Close call">
+                      ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                    </button>
+                  </div>
+                  <div id="call-participants-grid" class="call-participants-grid" aria-label="Call participants"></div>
+                  <div id="call-main-stream" class="call-main-stream" aria-live="polite">
+                    <video id="remote-screen-video" class="remote-screen-video" autoplay playsinline></video>
+                    <div id="call-main-placeholder" class="call-main-placeholder">
+                      <div class="call-peer-avatar-shell" aria-hidden="true">
+                        <span class="call-voice-ring r3"></span>
+                        <span class="call-voice-ring r2"></span>
+                        <span class="call-voice-ring r1"></span>
+                        <div id="call-peer-avatar" class="call-peer-avatar">T</div>
+                      </div>
+                      <div id="call-peer-name" class="call-peer-name">TheGraphT</div>
+                      <div id="call-peer-status" class="call-peer-status">requesting...</div>
+                      <div id="call-peer-substatus" class="call-peer-substatus">Setting up call</div>
+                      <div id="call-screen-share-notice" class="call-screen-share-notice" hidden></div>
+                    </div>
+                  </div>
+                  <div id="call-group-panel" class="call-group-panel" hidden>
+                    <div id="call-group-list" class="call-group-list"></div>
+                  </div>
+                  <div class="call-actions tg-call-actions">
+                    <div class="call-action">
+                      <button id="call-video-button" class="call-action-button tg-call-action-button btn-camera" type="button" aria-label="Toggle camera">
+                        ${getIconHtml("videocam_off", "", "aria-hidden=\"true\"")}
+                      </button>
+                      <span id="call-video-label" class="call-action-label" data-i18n="call.camera">Camera</span>
+                    </div>
+                    <div class="call-action">
+                      <button id="call-screen-button" class="call-action-button tg-call-action-button btn-screen" type="button" aria-label="Share screen">
+                        ${getIconHtml("screen_share", "", "aria-hidden=\"true\"")}
+                      </button>
+                      <span id="call-screen-label" class="call-action-label" data-i18n="call.screen">Screen</span>
+                    </div>
+                    <div class="call-action">
+                      <button id="call-mute-button" class="call-action-button tg-call-action-button btn-mute" type="button" aria-label="Mute microphone">
+                        ${getIconHtml("mic", "", "aria-hidden=\"true\"")}
+                      </button>
+                      <span id="call-mute-label" class="call-action-label" data-i18n="call.mute">Mute</span>
+                    </div>
+                    <div id="call-accept-wrap" class="call-action" hidden>
+                      <button id="call-accept-button" class="call-action-button tg-call-action-button accept" type="button" aria-label="Accept call">
+                        ${getIconHtml("call", "", "aria-hidden=\"true\"")}
+                      </button>
+                      <span class="call-action-label" data-i18n="call.accept">Accept</span>
+                    </div>
+                    <div class="call-action">
+                      <button id="call-end-button" class="call-action-button tg-call-action-button end btn-end" type="button" aria-label="End call">
+                        ${getIconHtml("call_end", "", "aria-hidden=\"true\"")}
+                      </button>
+                      <span id="call-end-label" class="call-action-label" data-i18n="call.decline">Decline</span>
+                    </div>
+                  </div>
+                  <button id="call-devices-button" class="call-devices-legacy-button" type="button" aria-hidden="true" tabindex="-1">devices</button>
+                  <div id="call-devices-panel" class="call-devices-panel" aria-hidden="true">
+                    <div class="call-devices-header">
+                      <div class="call-devices-title" data-i18n="call.audioDevices">Call audio devices</div>
+                      <button id="call-devices-close" class="call-icon-button" type="button" aria-label="Close devices panel">
+                        ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                      </button>
+                    </div>
+                    <div class="call-device-field">
+                      <label class="call-device-label" for="call-input-device" data-i18n="call.mic">Microphone</label>
+                      <select id="call-input-device" class="call-device-select"></select>
+                    </div>
+                    <div class="call-device-field">
+                      <label class="call-device-label" for="call-output-device" data-i18n="call.output">Output</label>
+                      <select id="call-output-device" class="call-device-select"></select>
+                    </div>
+                  </div>
+                </div>
+                <div id="call-mini-card" class="call-mini-card" aria-hidden="true">
+                  <div id="call-mini-drag-handle" class="call-mini-header">
+                    <div>
+                      <div class="call-mini-title">TheGraphT call</div>
+                      <div id="call-mini-name" class="call-mini-name">TheGraphT</div>
+                      <div id="call-mini-subtitle" class="call-mini-subtitle" data-i18n="call.connecting">connecting...</div>
+                    </div>
+                    <button id="call-mini-close" class="call-icon-button" type="button" aria-label="Close mini call">
+                      ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+                    </button>
+                  </div>
+                  <div class="call-mini-cover">
+                    <div class="call-peer-avatar-shell" aria-hidden="true">
+                      <span class="call-voice-ring r3"></span>
+                      <span class="call-voice-ring r2"></span>
+                      <span class="call-voice-ring r1"></span>
+                      <div id="call-mini-avatar" class="call-peer-avatar">T</div>
+                    </div>
+                  </div>
+                  <div class="call-mini-actions">
+                    <button id="call-mini-open" class="call-icon-button" type="button" aria-label="Open call">
+                      ${getIconHtml("open_in_full", "", "aria-hidden=\"true\"")}
+                    </button>
+                    <button id="call-mini-end" class="call-icon-button" type="button" aria-label="End call">
+                      ${getIconHtml("call_end", "", "aria-hidden=\"true\"")}
+                    </button>
+                  </div>
+                </div>
+                <div id="call-emoji-tooltip" class="call-emoji-tooltip" aria-hidden="true"></div>
+              </div>
+              <div id="group-call-leave-modal" class="leave-call-modal" aria-hidden="true">
+                <div class="leave-call-modal-card">
+                  <h3 data-i18n="call.leaveTitle">Leave video chat</h3>
+                  <p data-i18n="call.leaveDesc">Are you sure you want to leave this video chat?</p>
+                  <label class="leave-call-modal-checkbox">
+                    <input id="group-call-end-for-all" type="checkbox" />
+                    <span data-i18n="call.endVideoChat">End Video Chat</span>
+                  </label>
+                  <div class="leave-call-modal-actions">
+                    <button id="group-call-leave-cancel" type="button" data-i18n="common.cancel">CANCEL</button>
+                    <button id="group-call-leave-confirm" type="button" data-i18n="call.leaveConfirm">LEAVE</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <div id="qr-share-modal" class="qr-share-modal" aria-hidden="true">
+      <div id="qr-share-backdrop" class="qr-share-backdrop"></div>
+      <div id="qr-share-card" class="qr-share-card qr-share-card--light">
+        <div class="qr-share-toolbar">
+          <button id="qr-share-theme-toggle" class="qr-share-theme-toggle" type="button" aria-label="Toggle QR theme">
+            ${getIconHtml("moon", "qr-share-theme-icon qr-share-theme-icon-moon", "aria-hidden=\"true\"")}
+            ${getIconHtml("sun", "qr-share-theme-icon qr-share-theme-icon-sun", "aria-hidden=\"true\"")}
+          </button>
+          <button id="qr-share-close" class="qr-share-close" type="button" aria-label="Close">
+            ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+          </button>
+        </div>
+        <h2 id="qr-share-title" class="qr-share-title" data-i18n="qr.title">QR Code</h2>
+        <div class="qr-share-preview-wrap">
+          <div class="qr-share-tile">
+            <div id="qr-share-qr-host" class="qr-share-qr-host" aria-label="QR code"></div>
+          </div>
+        </div>
+        <p id="qr-share-url" class="qr-share-url"></p>
+        <button id="qr-share-copy-btn" class="qr-share-copy-btn" type="button" data-i18n="qr.copy">COPY QR CODE</button>
+      </div>
+    </div>
+    <div id="attachment-modal" class="media-modal" aria-hidden="true">
+      <div class="media-modal-backdrop"></div>
+      <div class="attachment-modal-shell is-single">
+        <div class="attachment-modal-header">
+          <button id="attachment-modal-close" class="attachment-modal-icon-btn close-btn" type="button" aria-label="Close">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <h2 id="attachment-modal-title" class="attachment-modal-title" data-i18n="actions.sendPhoto">Send Photo</h2>
+          <div class="attachment-modal-header-actions"></div>
+        </div>
+        <div class="attachment-modal-content">
+          <div id="attachment-modal-stage" class="attachment-modal-stage" hidden style="display: none;">
+            <button id="attachment-modal-prev" class="attachment-modal-nav prev" type="button" aria-label="Previous photo" hidden>&lsaquo;</button>
+            <div class="attachment-modal-main">
+              <img id="attachment-modal-image" src="" alt="" />
+            </div>
+            <button id="attachment-modal-next" class="attachment-modal-nav next" type="button" aria-label="Next photo" hidden>&rsaquo;</button>
+          </div>
+          <div id="attachment-modal-collage" class="attachment-modal-collage" hidden style="display: none;"></div>
+          <div id="attachment-modal-strip" class="attachment-modal-strip"></div>
+          <div class="attachment-modal-composer">
+            <div id="attachment-modal-emoji-picker" class="emoji-picker attachment-modal-emoji-picker" aria-hidden="true">
+              <div class="emoji-picker-search-wrap">
+                <svg class="emoji-picker-search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input id="attachment-modal-emoji-picker-search" class="emoji-picker-search" type="text" placeholder="Search Emoji" data-i18n-placeholder="emoji.search" autocomplete="off" />
+              </div>
+              <div id="attachment-modal-emoji-picker-head" class="emoji-picker-head"></div>
+              <div id="attachment-modal-emoji-picker-body" class="emoji-picker-body"></div>
+            </div>
+            <div class="attachment-modal-caption-pill">
+              <button id="attachment-modal-emoji-button" class="attachment-modal-emoji-btn" type="button" aria-label="Add emoji">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </button>
+              <textarea id="attachment-modal-caption" class="attachment-modal-caption" rows="1" placeholder="Add a caption..." data-i18n-placeholder="media.addCaption" autocomplete="off"></textarea>
+              <button id="attachment-modal-send" class="attachment-modal-send-fab" type="button" aria-label="Send">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Profile Settings Panel (Root Modal Level) -->
+    <aside id="sidebar-profile-panel" class="sidebar-profile-panel" aria-hidden="true">
+      <div class="sidebar-profile-card">
+        <header class="sidebar-profile-header">
+          <strong class="sidebar-profile-title" data-i18n="settings.title">Settings</strong>
+          <div class="sidebar-profile-header-actions">
+            <button class="sidebar-profile-search" type="button" aria-label="Search settings">
+              ${getIconHtml("search", "", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-more" type="button" aria-label="More options">
+              ${getIconHtml("more_vert", "", "aria-hidden=\"true\"")}
+            </button>
+            <button id="sidebar-profile-back" class="sidebar-profile-close" type="button" aria-label="Close Settings">
+              ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+            </button>
+          </div>
+        </header>
+
+        <div class="sidebar-profile-body">
+          <!-- Avatar Zone -->
+          <div class="sidebar-profile-avatar-zone">
+            <div class="sidebar-profile-avatar-wrapper">
+              <div id="sidebar-profile-avatar" class="sidebar-profile-avatar-circle" aria-hidden="true"></div>
+              <button id="sidebar-profile-avatar-plus" class="avatar-plus-button" type="button" aria-label="Change profile photo">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              
+              <!-- Avatar upload context menu -->
+              <div id="avatar-upload-menu" class="avatar-upload-menu" aria-hidden="true">
+                <button id="avatar-upload-file-btn" class="avatar-upload-menu-item" type="button">
+                  ${getIconHtml("image", "avatar-upload-menu-icon", "aria-hidden=\"true\"")}
+                  <span data-i18n="profile.file">File</span>
+                </button>
+                <button id="avatar-upload-clipboard-btn" class="avatar-upload-menu-item" type="button">
+                  ${getIconHtml("content_copy", "avatar-upload-menu-icon", "aria-hidden=\"true\"")}
+                  <span data-i18n="profile.fromClipboard">From clipboard</span>
+                </button>
+              </div>
+            </div>
+            
+            <div class="sidebar-profile-identity">
+              <p id="sidebar-profile-display-name" class="sidebar-profile-name"></p>
+              <span id="sidebar-profile-username" class="sidebar-profile-username-header"></span>
+              <span class="sidebar-profile-online-badge" data-i18n="status.online">online</span>
+            </div>
+          </div>
+
+          <input type="file" id="avatar-file-input" style="display: none;" accept="image/png, image/jpeg, image/gif, image/webp" />
+
+          <!-- Settings Menu -->
+          <div class="sidebar-profile-settings-block">
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="notifications">
+              ${getIconHtml("notifications", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.notifications">Notifications and Sounds</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="storage">
+              ${getIconHtml("storage", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.dataStorage">Data and Storage</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="privacy">
+              ${getIconHtml("security", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.privacy">Privacy and Security</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="general">
+              ${getIconHtml("settings", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.general">General Settings</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="folders">
+              ${getIconHtml("folder", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.chatFolders">Chat Folders</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button class="sidebar-profile-setting-row" type="button" data-settings-section="stickers">
+              ${getIconHtml("mood", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.stickers">Stickers and Emoji</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button id="sidebar-profile-devices-btn" class="sidebar-profile-setting-row" type="button">
+              ${getIconHtml("devices", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.devices">Devices</span>
+              <span id="sidebar-profile-device-badge" class="sidebar-profile-device-badge">1</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+            <button id="sidebar-profile-language-btn" class="sidebar-profile-setting-row" type="button">
+              ${getIconHtml("translate", "sidebar-profile-setting-icon", "aria-hidden=\"true\"")}
+              <span class="sidebar-profile-setting-label" data-i18n="settings.language">Language</span>
+              <span id="sidebar-profile-language-value" class="sidebar-profile-setting-value">English</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+          </div>
+
+          <!-- Premium Row -->
+          <div class="sidebar-profile-premium-block">
+            <button class="sidebar-profile-premium-row" type="button">
+              <span class="sidebar-profile-premium-icon-wrap" aria-hidden="true">
+                ${getIconHtml("star", "", "aria-hidden=\"true\"")}
+              </span>
+              <span class="sidebar-profile-premium-label" data-i18n="settings.premium">TheGraphT Premium</span>
+              ${getIconHtml("chevron_right", "sidebar-profile-setting-arrow", "aria-hidden=\"true\"")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Active Sessions Panel Modal -->
+    <aside id="active-sessions-panel" class="sidebar-profile-panel active-sessions-panel" aria-hidden="true">
+      <div class="sidebar-profile-card active-sessions-card">
+        <header class="sidebar-profile-header active-sessions-header">
+          <button id="active-sessions-back" class="sidebar-profile-back" type="button" aria-label="Back to Settings">
+            ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+          </button>
+          <strong class="sidebar-profile-title" data-i18n="activeSessions.title">Active sessions</strong>
+          <button id="active-sessions-close" class="sidebar-profile-close" type="button" aria-label="Close Active Sessions">
+            ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+          </button>
+        </header>
+
+        <div class="active-sessions-body">
+          <!-- Section 1: This device -->
+          <div class="active-sessions-section">
+            <div class="active-sessions-section-title" data-i18n="activeSessions.thisDevice">This device</div>
+            <div id="current-device-card" class="session-card current-session-card"></div>
+            <button id="terminate-other-sessions-btn" class="terminate-all-btn" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="terminate-hand-icon"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v9a7 7 0 0 0 7 7h1.5a6.5 6.5 0 0 0 6.5-6.5V11a2 2 0 0 0-4 0v0"/></svg>
+              <span data-i18n="activeSessions.terminateAll">Terminate all other sessions</span>
+            </button>
+            <p class="active-sessions-help-text" data-i18n="activeSessions.helpText">Logs out all devices except for this one.</p>
+          </div>
+
+          <!-- Section 2: Active Devices -->
+          <div class="active-sessions-section">
+            <div class="active-sessions-section-title" data-i18n="activeSessions.activeDevices">Active Devices</div>
+            <div id="active-devices-list" class="active-devices-list"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Session Termination Confirmation Modal Overlay (Screenshot 3) -->
+    <div id="terminate-confirm-modal" class="session-confirm-modal-overlay" aria-hidden="true">
+      <div class="session-confirm-modal-backdrop"></div>
+      <div class="session-confirm-modal-box">
+        <p id="terminate-confirm-text" class="session-confirm-modal-text">Are you sure you want to terminate all other sessions?</p>
+        <div class="session-confirm-modal-actions">
+          <button id="terminate-confirm-cancel" class="session-confirm-btn cancel" type="button" data-i18n="common.cancel">Cancel</button>
+          <button id="terminate-confirm-submit" class="session-confirm-btn terminate" type="button" data-i18n="common.terminate">Terminate</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="session-rename-modal" class="session-confirm-modal-overlay" aria-hidden="true">
+      <div class="session-confirm-modal-backdrop"></div>
+      <form id="session-rename-form" class="session-confirm-modal-box session-rename-modal-box">
+        <label class="session-confirm-modal-text" for="session-rename-input" data-i18n="activeSessions.renameDevice">Rename device</label>
+        <input id="session-rename-input" class="session-rename-input" type="text" maxlength="64" placeholder="Device name" data-i18n-placeholder="activeSessions.deviceName" autocomplete="off" />
+        <div class="session-confirm-modal-actions">
+          <button id="session-rename-cancel" class="session-confirm-btn cancel" type="button" data-i18n="common.cancel">Cancel</button>
+          <button class="session-confirm-btn session-rename-save" type="submit" data-i18n="common.save">Save</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Language Selection Panel Modal (Photo 2) -->
+    <aside id="language-select-panel" class="sidebar-profile-panel language-select-panel" aria-hidden="true">
+      <div class="sidebar-profile-card language-select-card">
+        <header class="sidebar-profile-header language-select-header">
+          <button id="language-select-back" class="sidebar-profile-back" type="button" aria-label="Back to Settings">
+            ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+          </button>
+          <strong class="sidebar-profile-title" data-i18n="language.title">Language</strong>
+          <button id="language-select-close" class="sidebar-profile-close" type="button" aria-label="Close Language Settings">
+            ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+          </button>
+        </header>
+
+        <div class="language-select-body">
+          <!-- Search Bar -->
+          <div class="language-search-wrapper">
+            <svg class="language-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="language-search-input" class="language-search-input" type="text" placeholder="Search" data-i18n-placeholder="language.search" />
+          </div>
+
+          <!-- Language List -->
+          <div id="language-list-container" class="language-list-container"></div>
+        </div>
+
+      </div>
+    </aside>
+
+    <div id="viewer-modal" class="media-modal" aria-hidden="true">
+      <div class="media-modal-backdrop"></div>
+      <div class="viewer-modal-shell">
+        <div class="viewer-modal-header">
+          <div class="viewer-author">
+            <div id="viewer-author-avatar" class="viewer-author-avatar">?</div>
+            <div class="viewer-author-copy">
+              <span id="viewer-author-name" class="viewer-author-name">TheGraphT</span>
+              <span id="viewer-author-meta" class="viewer-author-meta">Today, 00:00</span>
+            </div>
+          </div>
+          <div class="viewer-header-actions">
+            <button id="viewer-modal-download" class="viewer-modal-header-btn" type="button" aria-label="Save photo">
+              ${getIconHtml("download", "", "aria-hidden=\"true\"")}
+            </button>
+            <button id="viewer-modal-close" class="media-modal-close" type="button" aria-label="Close">&times;</button>
+          </div>
+        </div>
+        <div id="viewer-modal-stage" class="viewer-modal-stage">
+          <img id="viewer-modal-image" class="viewer-modal-image" src="" alt="" />
+        </div>
+        <div id="viewer-zoom-chip" class="viewer-zoom-chip" aria-hidden="true">
+          <button id="viewer-zoom-out" class="viewer-zoom-button" type="button" aria-label="Zoom out">−</button>
+          <span id="viewer-zoom-value" class="viewer-zoom-value">100%</span>
+          <button id="viewer-zoom-in" class="viewer-zoom-button" type="button" aria-label="Zoom in">+</button>
+        </div>
+      </div>
+    </div>
+    <div id="message-context-menu" class="message-context-menu" aria-hidden="true">
+      <div id="message-context-menu-body" class="message-context-menu-body"></div>
+    </div>
+    <div id="dialog-context-menu" class="dialog-context-menu" aria-hidden="true">
+      <div id="dialog-context-menu-body" class="dialog-context-menu-body"></div>
+    </div>
+    <div id="group-member-context-menu" class="dialog-context-menu" aria-hidden="true">
+      <div id="group-member-context-menu-body" class="dialog-context-menu-body"></div>
+    </div>
+    <div id="profile-link-context-menu" class="dialog-context-menu" aria-hidden="true">
+      <div id="profile-link-context-menu-body" class="dialog-context-menu-body"></div>
+    </div>
+    <div id="group-chip-tooltip-global" class="group-selected-chip-tooltip-global" aria-hidden="true"></div>
+    <div id="delete-message-modal" class="media-modal" aria-hidden="true">
+      <div class="media-modal-backdrop"></div>
+      <div class="delete-message-modal-shell">
+        <h2 class="delete-message-title">Delete message</h2>
+        <p class="delete-message-copy">Are you sure you want to delete this message?</p>
+        <label id="delete-message-for-everyone-wrap" class="delete-message-checkbox">
+          <input id="delete-message-for-everyone" type="checkbox" checked />
+          <span id="delete-message-for-everyone-label">Also delete for everyone</span>
+        </label>
+        <div class="delete-message-actions">
+          <button id="delete-message-cancel" class="delete-message-button" type="button">Cancel</button>
+          <button id="delete-message-confirm" class="delete-message-button danger" type="button">Delete</button>
+        </div>
+      </div>
+    </div>
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+    <div id="preact-root"></div>
+    <div id="app-root" aria-hidden="true"></div>
+
+    <!-- TheGraphT Premium Modal -->
+    <div id="premium-modal-overlay" class="premium-modal-overlay" aria-hidden="true" hidden>
+      <div class="premium-modal-card">
+        <button id="premium-modal-close" class="premium-modal-close" type="button" aria-label="Close modal">
+          ${getIconHtml("close", "", "aria-hidden=\"true\"")}
+        </button>
+        <div id="premium-modal-slider" class="premium-modal-slider">
+          
+          <!-- Panel 1: Main Features List -->
+          <div class="premium-panel main-panel">
+            <div class="premium-modal-header">
+              <div class="premium-star-animation">
+                ${getIconHtml("star", "premium-header-star", "aria-hidden=\"true\"")}
+              </div>
+              <h2 class="premium-modal-title">TheGraphT Premium</h2>
+              <p class="premium-modal-subtitle">Support the development and unlock exclusive features</p>
+            </div>
+            <div class="premium-modal-body">
+              <ul class="premium-features-list">
+                <li class="premium-feature-item" data-feature="style">
+                  <span class="premium-feature-icon-wrap theme-gradient">
+                    ${getIconHtml("settings", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">Messenger Style Customization</span>
+                    <span class="premium-feature-desc">Unique gradient themes for the application.</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+                <li class="premium-feature-item" data-feature="glow">
+                  <span class="premium-feature-icon-wrap avatar-glowing">
+                    ${getIconHtml("auto_awesome", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">Avatar Glow Effect</span>
+                    <span class="premium-feature-desc">Dynamic neon glowing border around your avatar.</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+                <li class="premium-feature-item" data-feature="color">
+                  <span class="premium-feature-icon-wrap name-painting">
+                    ${getIconHtml("edit", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">Custom Nickname Color</span>
+                    <span class="premium-feature-desc">Stand out in groups with a custom color and a premium badge.</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+                <li class="premium-feature-item" data-feature="gif">
+                  <span class="premium-feature-icon-wrap gif-avatar">
+                    ${getIconHtml("photo_library", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">GIF Avatars</span>
+                    <span class="premium-feature-desc">Support for animated GIF avatars in your profile.</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+                <li class="premium-feature-item" data-feature="status">
+                  <span class="premium-feature-icon-wrap offline-status">
+                    ${getIconHtml("lock", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">Custom Last Seen Status</span>
+                    <span class="premium-feature-desc">Hide your exact last seen time (shows recently/long ago).</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+                <li class="premium-feature-item" data-feature="ai">
+                  <span class="premium-feature-icon-wrap ai-integration">
+                    ${getIconHtml("star", "", "aria-hidden=\"true\"")}
+                  </span>
+                  <div class="premium-feature-info">
+                    <span class="premium-feature-title">AI Assistant Integration</span>
+                    <span class="premium-feature-desc">Access advanced AI models on ai.thegrapht.su (Carbon/Graphite).</span>
+                  </div>
+                  <span class="premium-feature-chevron">
+                    ${getIconHtml("chevron_right", "", "aria-hidden=\"true\"")}
+                  </span>
+                </li>
+              </ul>
+            </div>
+            <div class="premium-modal-footer">
+              <button id="premium-subscribe-btn" class="premium-subscribe-btn premium-subscribe-action" type="button">
+                Subscribe for $2.99 / month
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel 2: Detailed Sub-features View -->
+          <div class="premium-panel detail-panel">
+            <div class="premium-detail-header">
+              <button id="premium-detail-back" class="premium-detail-back-btn" type="button" aria-label="Go back">
+                ${getIconHtml("arrow_back", "", "aria-hidden=\"true\"")}
+              </button>
+              <div class="premium-detail-title-container">
+                <span id="premium-detail-icon" class="premium-detail-icon-mini"></span>
+                <h3 id="premium-detail-title" class="premium-detail-title">Feature Details</h3>
+              </div>
+            </div>
+            <div class="premium-modal-body">
+              <ul id="premium-detail-list" class="premium-detail-list">
+                <!-- Dynamically populated via javascript -->
+              </ul>
+            </div>
+            <div class="premium-modal-footer">
+              <button class="premium-subscribe-btn premium-subscribe-action" type="button">
+                Subscribe for $2.99 / month
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <script src="/assets/icon-helper.js"></script>
+    <script type="module" src="${clientScriptUrl}"></script>
+  </body>
+</html>`;
+};

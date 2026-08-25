@@ -1,0 +1,34 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "https://a.thegrapht.su",
+      "server_name": "dev.thegrapht.su"
+    }
+  },
+  "disable_custom_urls": true,
+  "disable_guests": true,
+  "disable_login_language_selector": false,
+  "disable_3pid_login": true,
+  "enable_client_well_known_lookups": false,
+  "brand": "Element",
+  "default_country_code": "RU",
+  "show_labs_settings": false,
+  "default_theme": "light",
+  "default_federate": false,
+  "default_device_display_name": "TheGraphT Element",
+  "permalink_prefix": "https://a.thegrapht.su",
+  "mobile_guide_toast": false,
+  "room_directory": {
+    "servers": ["dev.thegrapht.su"]
+  },
+  "setting_defaults": {
+    "breadcrumbs": true
+  },
+  "embedded_pages": {
+    "login_for_welcome": true
+  },
+  "branding": {
+    "welcome_background_url": "/auth-bg.png",
+    "auth_footer_links": []
+  }
+}

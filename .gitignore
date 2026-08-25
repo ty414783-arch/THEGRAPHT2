@@ -1,0 +1,56 @@
+# Зависимости
+node_modules/
+**/node_modules/
+
+# Файлы окружения и секреты
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+**/*.key
+**/*.pem
+**/*.cert
+**/*.crt
+**/*.pub
+**/*.pfx
+**/*.p12
+
+# Базы данных и файлы состояния
+postgres-data/
+redis-data/
+redis/
+postgres/
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# Системные и кэш-файлы
+.DS_Store
+.vite/
+.next/
+dist/
+build/
+coverage/
+.idea/
+.vscode/
+*.swp
+
+# Логи
+*.log
+logs/
+**/*.log
+**/logs/
+
+# Локальный мусор и сторонние деревья
+vendor-sources/
+test-results/
+apps/frontend/test-results/
+apps/frontend/.agent-debug*
+**/*~Stashed changes
+res/download/release/
+
+# Matrix runtime secrets / sqlite sidecars
+infra/matrix/synapse/homeserver.yaml
+infra/matrix/synapse/*.db-shm
+infra/matrix/synapse/*.db-wal

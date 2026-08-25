@@ -1,0 +1,14 @@
+services:
+  element-web:
+    image: vectorim/element-web:latest
+    container_name: thegrapht-element-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8091:80"
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./index.html:/app/index.html:ro
+      - ./thg-boot.js:/app/thg-boot.js:ro
+      - ./hide-homeserver.css:/app/hide-homeserver.css:ro
+      - ./sw.js:/app/sw.js:ro
+      - ./auth-bg.png:/app/auth-bg.png:ro

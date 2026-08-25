@@ -1,0 +1,49 @@
+/* Hide homeserver picker — HS is fixed in config.json */
+.mx_ServerPicker,
+.mx_ServerPicker_server,
+.mx_ServerPicker_desc,
+.mx_ServerPicker_change,
+.mx_ServerPicker_help,
+.mx_Login_underlinedServerName {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Drop Blog / Mastodon / GitHub / "Powered by Matrix" */
+.mx_AuthFooter {
+  display: none !important;
+}
+
+/* Taller login/register card */
+.mx_AuthPage_modal {
+  min-height: min(740px, calc(100vh - 56px)) !important;
+  margin-top: 28px !important;
+  margin-bottom: 28px !important;
+  align-items: stretch !important;
+}
+
+.mx_AuthPage_modalContent,
+.mx_AuthHeader,
+.mx_AuthBody {
+  min-height: min(740px, calc(100vh - 56px)) !important;
+}
+
+.mx_AuthBody {
+  display: flex !important;
+  flex-direction: column !important;
+  padding-bottom: 48px !important;
+}
+
+/* Custom backdrop (also set via branding.welcome_background_url) */
+.mx_AuthPage {
+  background-color: #05070c !important;
+  background-image: url("/auth-bg.png") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+}

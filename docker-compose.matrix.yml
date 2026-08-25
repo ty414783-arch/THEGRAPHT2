@@ -1,0 +1,20 @@
+# Isolated Matrix playground. Does not replace TheGraphT.
+# Start: docker compose -f docker-compose.matrix.yml up -d
+services:
+  synapse:
+    image: matrixdotorg/synapse:latest
+    restart: unless-stopped
+    volumes:
+      - ./infra/matrix/synapse:/data
+    ports:
+      - "127.0.0.1:8008:8008"
+    environment:
+      SYNAPSE_CONFIG_PATH: /data/homeserver.yaml
+
+  element-web:
+    image: vectorim/element-web:latest
+    restart: unless-stopped
+    volumes:
+      - ./infra/matrix/element-config.json:/app/config.json:ro
+    ports:
+      - "127.0.0.1:8088:80"

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/windowBackground"
+    android:orientation="horizontal">
+
+    <!-- Sidebar View (default match_parent, will be constrained to fixed width on tablets) -->
+    <LinearLayout
+        android:id="@+id/dialogsSidebar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/windowBackground"
+        android:orientation="vertical"
+        android:paddingLeft="14dp"
+        android:paddingTop="14dp"
+        android:paddingRight="14dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <su.thegrapht.app.CircleImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/thegrapht_logo"
+                android:scaleType="centerCrop" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TheGrapht"
+                    android:textColor="@color/tg_primary"
+                    android:textSize="22sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/dialogsUserName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/tg_text_muted"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/createGroupButton"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/bg_icon_circle"
+                android:src="@drawable/ic_users"
+                android:contentDescription="Создать группу"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <ImageView
+                android:id="@+id/logoutButton"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_circle"
+                android:src="@drawable/ic_logout"
+                android:contentDescription="Выйти"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <EditText
+            android:id="@+id/dialogsSearch"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_input_tg"
+            android:hint="Поиск чатов и людей"
+            android:drawableStart="@drawable/ic_search"
+            android:drawablePadding="10dp"
+            android:paddingLeft="14dp"
+            android:paddingRight="14dp"
+            android:textColor="@color/tg_text"
+            android:textColorHint="@color/tg_text_muted"
+            android:textSize="15sp"
+            android:maxLines="1"
+            android:inputType="text" />
+
+        <TextView
+            android:id="@+id/dialogsStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="18dp"
+            android:textColor="@color/tg_text_muted"
+            android:textSize="13sp" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="6dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/dialogsList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@color/tg_border"
+                android:dividerHeight="1dp"
+                android:paddingBottom="10dp"
+                android:scrollbars="none" />
+
+            <su.thegrapht.app.GoogleLoaderView
+                android:id="@+id/dialogsLoader"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Split-pane Divider (only visible on tablets) -->
+    <View
+        android:id="@+id/tabletDivider"
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="@color/tg_border"
+        android:visibility="gone" />
+
+    <!-- Details View Container (only visible on tablets) -->
+    <FrameLayout
+        android:id="@+id/tabletChatContainer"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="2"
+        android:background="?android:attr/windowBackground"
+        android:visibility="gone" />
+
+</LinearLayout>
